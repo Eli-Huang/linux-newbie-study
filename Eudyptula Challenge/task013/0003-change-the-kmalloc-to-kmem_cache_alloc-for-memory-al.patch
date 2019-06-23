@@ -1,0 +1,94 @@
+From 3fcc13a61edb14f6118337760fd2edbe4c89367f Mon Sep 17 00:00:00 2001
+From: Elihuang <1458143435@qq.com>
+Date: Fri, 30 Nov 2018 21:31:13 +0800
+Subject: [PATCH 3/3] change the kmalloc to kmem_cache_alloc for memory
+ allocation
+
+---
+ task013/helloworld.c | 29 +++++++++++++++++++++++++++--
+ 1 file changed, 27 insertions(+), 2 deletions(-)
+
+diff --git a/task013/helloworld.c b/task013/helloworld.c
+index 317b251..8faf0fa 100644
+--- a/task013/helloworld.c
++++ b/task013/helloworld.c
+@@ -23,6 +23,7 @@
+ #include <linux/kernel.h>
+ #include <linux/init.h>
+ #include <linux/slab.h>
++#include <linux/slab_def.h>
+ #include <linux/string.h>
+ 
+ #include <linux/printk.h>
+@@ -40,9 +41,12 @@ struct identity {
+ 	bool busy;
+ 	struct list_head list;
+ };
++static char *cache_name = MISCDEVICE;
++static struct kmem_cache *identity_test_cache = NULL;
+ static LIST_HEAD(identity_head);
+ static struct list_head *tail = &identity_head;
+ 
++
+ static struct identity *identity_find(int id)
+ {
+ 	struct identity *pos = NULL;
+@@ -70,7 +74,7 @@ static int identity_create(char *name, int id)
+ 		ret = -1;
+ 		goto OUT;
+ 	}
+-	tmp = (struct identity *)kmalloc(sizeof(struct identity), GFP_KERNEL);
++	tmp = (struct identity *)kmem_cache_alloc(identity_test_cache, GFP_KERNEL);
+ 	if (tmp == NULL) {
+ 		ret = -1;
+ 		pr_err("kmalloc has failed \n");
+@@ -114,12 +118,31 @@ static void identity_destroy(int id)
+ 		return;
+ 	}
+ 	list_del(&tmp->list);
+-	kfree(tmp);
++	kmem_cache_free(identity_test_cache, tmp);
+ }
++static int indentity_slab_cache_init(void)
++{
++	identity_test_cache = kmem_cache_create(cache_name, sizeof(struct identity), 0, 0, NULL);
++	if (!identity_test_cache)
++		return -1;
++	return 0;
++}
++static void indentity_slab_cache_destory(void)
++{
++	if (identity_test_cache)
++		kmem_cache_destroy(identity_test_cache);
+ 
++}
+ static int __init list_test_init(void)
+ {
+ 	struct identity *temp;
++	int status;
++
++	status = indentity_slab_cache_init();
++	if (status == -1){
++		pr_err("kmem cache create failed\n");
++		return -1;
++	}
+ 	identity_create(MISCDEVICE, 5);
+ 	identity_create(NULL, 12);
+ 	identity_create("Alice", 1);
+@@ -146,11 +169,13 @@ static int __init list_test_init(void)
+ static void __exit list_test_exit(void)
+ {
+ 	struct identity *tmp = NULL;
++
+ 	while (!list_empty(&identity_head)) {
+ 		tmp = list_last_entry(&identity_head, struct identity, list);
+ 		list_del(&tmp->list);
+ 		kfree(tmp);
+ 	}
++	indentity_slab_cache_destory();
+ 	pr_info("The linked-list test is end\n");
+ }
+ 
+-- 
+2.7.4
+

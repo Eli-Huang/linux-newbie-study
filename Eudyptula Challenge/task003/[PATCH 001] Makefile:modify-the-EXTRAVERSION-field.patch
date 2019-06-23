@@ -1,0 +1,11 @@
+--- linux/Makefile.orig	2018-08-07 22:21:59.228317193 +0800
++++ linux/Makefile	2018-08-07 22:22:09.388263224 +0800
+@@ -2,7 +2,7 @@
+ VERSION = 4
+ PATCHLEVEL = 18
+ SUBLEVEL = 0
+-EXTRAVERSION = -rc7
++EXTRAVERSION = -eudyptula
+ NAME = Merciless Moray
+ 
+ # *DOCUMENTATION*

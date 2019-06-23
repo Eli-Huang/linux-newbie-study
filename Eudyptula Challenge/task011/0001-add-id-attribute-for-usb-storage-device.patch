@@ -1,0 +1,80 @@
+From 4cbfa25ba1ad6b6c8f394c1d53bb94b35fa63542 Mon Sep 17 00:00:00 2001
+From: Elihuang <1458143435@qq.com>
+Date: Tue, 20 Nov 2018 22:22:30 +0800
+Subject: [PATCH] add id attribute for usb storage device
+
+Signed-off-by: Elihuang <1458143435@qq.com>
+
+---
+ drivers/usb/storage/scsiglue.c | 44 ++++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 44 insertions(+)
+
+diff --git a/drivers/usb/storage/scsiglue.c b/drivers/usb/storage/scsiglue.c
+index e227bb5..8ed9342 100644
+--- a/drivers/usb/storage/scsiglue.c
++++ b/drivers/usb/storage/scsiglue.c
+@@ -52,6 +52,10 @@
+ #define VENDOR_ID_PENTAX	0x0a17
+ #define VENDOR_ID_MOTOROLA	0x22b8
+ 
++
++static char default_content[32] = "defaults";
++static const char my_assigned_id[] = "7c1caf2f50d1";
++
+ /***********************************************************************
+  * Host functions 
+  ***********************************************************************/
+@@ -579,10 +583,50 @@ static ssize_t max_sectors_store(struct device *dev, struct device_attribute *at
+ 	}
+ 	return -EINVAL;
+ }
++static ssize_t id_show(struct device *dev, struct device_attribute *attr, char *buf)
++{
++	char *tmp = &default_content[0];
++
++	return sprintf(buf, "%s\n", tmp);
++}
++static ssize_t id_store(struct device *dev, struct device_attribute *attr, const char *buf, size_t count)
++{
++	int retval = 0;
++	char *tmp = default_content;
++	char *buf_copy = kmalloc(sizeof(char) * 32, GFP_KERNEL);
++	char *my_assigned_id_ptr = my_assigned_id;
++	int len = 0;
++
++	len = snprintf(buf_copy, strlen(my_assigned_id_ptr) + 1, buf);
++	if (len <= 0) {
++		pr_debug("store_id: failed when copy\n");
++		retval = -2;
++		goto out;
++	}
++	len = strcmp(buf_copy, my_assigned_id_ptr)
++	if (len) {
++		pr_debug("store_id: id is error,write failed:%s vs %s\n", buf_copy, my_assigned_id_ptr);
++		retval = -1;
++		goto out;
++	}
++	retval = snprintf(tmp, strlen(my_assigned_id_ptr) + 1, buf);
++	if (retval <= 0) {
++		pr_debug("store_id: failed\n");
++		goto out;
++	} else {
++		pr_debug("store_id: succeeded\n");
++	}
++out:
++	kfree(buf_copy);
++	return retval;
++}
++
+ static DEVICE_ATTR_RW(max_sectors);
++static struct device_attribute dev_attr_id = __ATTR(id, 0664, id_show, id_store);
+ 
+ static struct device_attribute *sysfs_device_attr_list[] = {
+ 	&dev_attr_max_sectors,
++	&dev_attr_id,
+ 	NULL,
+ };
+ 
+-- 
+2.7.4
+

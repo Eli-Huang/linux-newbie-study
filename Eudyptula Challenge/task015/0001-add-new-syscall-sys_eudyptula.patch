@@ -1,0 +1,75 @@
+From b8d47ebab101c27149876a89bdadf0ea35e71f18 Mon Sep 17 00:00:00 2001
+From: Elihuang <1458143435@qq.com>
+Date: Fri, 11 Jan 2019 23:43:12 +0800
+Subject: [PATCH] add new syscall sys_eudyptula
+
+---
+ arch/x86/entry/syscalls/syscall_32.tbl |  1 +
+ include/linux/syscalls.h               |  1 +
+ kernel/sys.c                           | 22 +++++++++++++++++++++-
+ 3 files changed, 23 insertions(+), 1 deletion(-)
+
+diff --git a/arch/x86/entry/syscalls/syscall_32.tbl b/arch/x86/entry/syscalls/syscall_32.tbl
+index 3cf7b53..db199f7 100644
+--- a/arch/x86/entry/syscalls/syscall_32.tbl
++++ b/arch/x86/entry/syscalls/syscall_32.tbl
+@@ -398,3 +398,4 @@
+ 384	i386	arch_prctl		sys_arch_prctl			__ia32_compat_sys_arch_prctl
+ 385	i386	io_pgetevents		sys_io_pgetevents		__ia32_compat_sys_io_pgetevents
+ 386	i386	rseq			sys_rseq			__ia32_sys_rseq
++387	i386	eudyptula		sys_eudyptula			__ia32_sys_eudyptula
+diff --git a/include/linux/syscalls.h b/include/linux/syscalls.h
+index 5c1a093..cdfbbf4 100644
+--- a/include/linux/syscalls.h
++++ b/include/linux/syscalls.h
+@@ -1109,6 +1109,7 @@ asmlinkage long sys_mmap_pgoff(unsigned long addr, unsigned long len,
+ 			unsigned long fd, unsigned long pgoff);
+ asmlinkage long sys_old_mmap(struct mmap_arg_struct __user *arg);
+ 
++asmlinkage long sys_eudyptula(int high_id, int low_id);
+ 
+ /*
+  * Not a real system call, but a placeholder for syscalls which are
+diff --git a/kernel/sys.c b/kernel/sys.c
+index 38509dc..62dcd0f 100644
+--- a/kernel/sys.c
++++ b/kernel/sys.c
+@@ -124,7 +124,7 @@
+ #ifndef SVE_GET_VL
+ # define SVE_GET_VL()		(-EINVAL)
+ #endif
+-
++#define EUDYPTULA_ID		 "7c1caf2f50d1"
+ /*
+  * this is where the system-wide overflow UID and GID are defined, for
+  * architectures that now have 32-bit UID/GID but didn't in the past
+@@ -2491,6 +2491,26 @@ SYSCALL_DEFINE5(prctl, int, option, unsigned long, arg2, unsigned long, arg3,
+ 	return error;
+ }
+ 
++SYSCALL_DEFINE2(eudyptula, int __user, high_id, int __user, low_id)
++{
++	int err = 0;
++	unsigned long long combination_id = 0;
++	char *buf = kmalloc(sizeof(char)*128, GFP_KERNEL);
++
++	combination_id = high_id & 0xffffffff;
++	combination_id = (combination_id << 32) + (unsigned int)low_id;
++	if (snprintf(buf, 128, "%llx", combination_id) <= 0) {
++		err = -ENOSPC;
++		goto out;
++	}
++	if (strcmp(buf, EUDYPTULA_ID))
++		err = -EINVAL;
++out:
++	kfree(buf);
++	return err;
++}
++
++
+ SYSCALL_DEFINE3(getcpu, unsigned __user *, cpup, unsigned __user *, nodep,
+ 		struct getcpu_cache __user *, unused)
+ {
+-- 
+2.7.4
+
